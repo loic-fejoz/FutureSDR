@@ -16,6 +16,7 @@ members = [
     ".",
     "pmt",
     "frontend",
+    "examples/AMTransmission",
     "examples/android",
     "examples/logging",
     "examples/wasm",

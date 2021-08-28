@@ -1,3 +1,7 @@
+
+mod audio_source;
+pub use audio_source::{AudioSource, AudioSourceBuilder};
+
 mod copy;
 pub use copy::{Copy, CopyBuilder};
 
