@@ -37,20 +37,18 @@ impl AsyncKernel for AudioSource {
         _mio: &mut MessageIo<Self>,
         _meta: &mut BlockMeta,
     ) -> Result<()> {
-        print!("AudioSource work");
+        print!("AudioSource work\n");
         let stream = self.device.build_output_stream(
             &self.config,
              |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
                 // react to stream events and read or write stream data here.
-                let o = sio.output(0).slice::<u8>();
+                let o = sio.output(0).slice::<f32>();
                 print!("{:?}", data);
-                for ele in data {
-                    let v = *ele;
-                    let v_bytes = v.to_ne_bytes();
-         
-                    unsafe {
-                        ptr::copy_nonoverlapping(v_bytes.as_mut_ptr(), o.as_mut_ptr(), 4);
-                    }
+                
+                unsafe {
+                    let src_ptr = data.as_ptr();
+                    let dst_ptr = o.as_mut_ptr();
+                    ptr::copy_nonoverlapping(src_ptr, dst_ptr, data.len());
                 }
                 
                 debug_assert_eq!(o.len() % 4/*self.item_size*/, 0);
@@ -77,7 +75,7 @@ impl AsyncKernel for AudioSource {
         _mio: &mut MessageIo<Self>,
         _meta: &mut BlockMeta,
     ) -> Result<()> {
-        print!("AudioSource Init");
+        print!("AudioSource Init\n");
         Ok(())
     }
 
