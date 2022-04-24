@@ -1,0 +1,11 @@
+[package]
+name = "oscillator-mixing"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+futuresdr = { path = "../..", features = ["zeromq", "audio"] }
+
+[[bin]]
+name = "emitter"
+path = "emitter.rs"

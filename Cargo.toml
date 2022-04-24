@@ -21,6 +21,7 @@ members = [
     "examples/firdes",
     "examples/fm-receiver",
     "examples/logging",
+    "examples/oscillator-mixing",
     "examples/rx-to-file",
     "examples/spectrum",
     "examples/wasm",
