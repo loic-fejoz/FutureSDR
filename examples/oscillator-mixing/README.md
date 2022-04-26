@@ -15,6 +15,8 @@ cargo build
 
 ## Running
 
+![](grc-flowgraph.png)
+
 On one side, open [viewer.grc](./viewer.grc) with your GNU Radio Companion and launch it.
 
 On another side, launch the emitter with command:
