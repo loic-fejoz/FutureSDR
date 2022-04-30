@@ -8,18 +8,22 @@ use futuresdr::anyhow::Result;
 use futuresdr::blocks::Apply;
 use futuresdr::runtime::Block;
 use futuresdr::blocks::NullSink;
-use futuresdr::blocks::VectorSourceBuilder;
+use futuresdr::blocks::FiniteSource;
 use futuresdr::runtime::Flowgraph;
 use futuresdr::runtime::Runtime;
+use futuresdr::runtime::buffer::slab::Slab;
+
 mod applyinterleaved;
 use applyinterleaved::ApplyInterleaved;
-use futuresdr::runtime::buffer::slab::Slab;
 
 mod applynm;
 use applynm::ApplyNM;
 
 mod leftrightbalance;
 use leftrightbalance::LeftRightBalanceInterleaved;
+
+mod leftrightbalancefast;
+use leftrightbalancefast::LeftRightBalanceInterleavedFast;
 
 #[cfg(not(RUSTC_IS_STABLE))]
 use core::intrinsics::{fmul_fast};
@@ -48,6 +52,13 @@ fn run_mono_to_stereo_leftrightbalance(vec_size: usize, slab_size: usize) -> Res
     let gain_l: f32 = 0.8;
     let gain_r: f32 = 0.9;
     let mono_to_stereo = LeftRightBalanceInterleaved::new(gain_l, gain_r);
+    run_flow_graph(vec_size, slab_size, mono_to_stereo, None)
+}
+
+fn run_mono_to_stereo_leftrightbalance_fast(vec_size: usize, slab_size: usize) -> Result<()> {
+    let gain_l: f32 = 0.8;
+    let gain_r: f32 = 0.9;
+    let mono_to_stereo = LeftRightBalanceInterleavedFast::new(gain_l, gain_r);
     run_flow_graph(vec_size, slab_size, mono_to_stereo, None)
 }
 
@@ -102,7 +113,15 @@ fn run_flow_graph(vec_size: usize, slab_size: usize, mono_to_stereo: Block, adap
 
     let mut fg = Flowgraph::new();
 
-    let src = VectorSourceBuilder::<u32>::new(vec![1; vec_size]).build();
+    let mut counter: u16 = 0;
+    let vec_size = vec_size as u16;
+    let src = FiniteSource::<f32>::new(move || {
+        counter += 1;
+        if counter == /*vec_size*/ std::u16::MAX {
+            return None;
+        }
+        Some(counter as f32)
+    });
 
     let snk = NullSink::<f32>::new();
 
@@ -190,5 +209,12 @@ fn mono_to_stereo_4096_applynm_fast(bencher: &mut Bencher) {
 fn mono_to_stereo_4096_dedicatedblock(bencher: &mut Bencher) {
     bencher.iter(|| {
         _ = run_mono_to_stereo_leftrightbalance(4096, 4096);
+    });
+}
+
+#[bench]
+fn mono_to_stereo_4096_dedicatedblock_fast(bencher: &mut Bencher) {
+    bencher.iter(|| {
+        _ = run_mono_to_stereo_leftrightbalance_fast(4096, 4096);
     });
 }
