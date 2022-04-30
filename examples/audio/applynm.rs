@@ -1,4 +1,5 @@
 use std::mem;
+use std::time::{Duration,Instant};
 
 use futuresdr::anyhow::Result;
 use futuresdr::runtime::Block;
@@ -17,6 +18,8 @@ where
     B: 'static,
 {
     f: Box<dyn FnMut(&[A], &mut [B])  + Send + 'static>,
+    acc_duration: Duration,
+    work_count: u32,
 }
 
 impl<A, B, const N: usize, const M: usize> ApplyNM<A, B, N, M>
@@ -32,7 +35,7 @@ where
                 .add_output("out", mem::size_of::<B>())
                 .build(),
             MessageIoBuilder::<ApplyNM<A, B, N, M>>::new().build(),
-            ApplyNM { f: Box::new(f) },
+            ApplyNM { f: Box::new(f), acc_duration: Duration::from_secs(0), work_count: 0 },
         )
     }
 }
@@ -49,6 +52,7 @@ where
         _mio: &mut MessageIo<Self>,
         _meta: &mut BlockMeta,
     ) -> Result<()> {
+        let now = Instant::now();
         let i = sio.input(0).slice::<A>();
         let o = sio.output(0).slice::<B>();
 
@@ -65,7 +69,25 @@ where
         if sio.input(0).finished() && m == i.len() {
             io.finished = true;
         }
+        let work_duration = now.elapsed();
+        self.acc_duration += work_duration;
+        self.work_count += 1;
+
+        if self.work_count % 1000 == 0 || (sio.input(0).finished() && m == i.len()) {
+            eprint!("count: {:?}, average: {:?}\n", self.work_count, self.acc_duration/self.work_count);
+        }
 
         Ok(())
     }
+
+    // fn init(
+    //     &mut self,
+    //     _sio: &mut StreamIo,
+    //     _mio: &mut MessageIo<Self>,
+    //     _meta: &mut BlockMeta,
+    // ) -> Result<()> {
+    //     self.work_count = 0;
+    //     self.acc_duration = Duration::from_secs(0);
+    //     Ok(())
+    // }
 }

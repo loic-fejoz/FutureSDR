@@ -18,6 +18,9 @@ use futuresdr::runtime::buffer::slab::Slab;
 mod applynm;
 use applynm::ApplyNM;
 
+mod leftrightbalance;
+use leftrightbalance::LeftRightBalanceInterleaved;
+
 #[cfg(not(RUSTC_IS_STABLE))]
 use core::intrinsics::{fmul_fast};
 
@@ -25,10 +28,27 @@ fn run_mono_to_stereo(vec_size: usize, slab_size: usize) -> Result<()> {
     let gain_l: f32 = 0.8;
     let gain_r: f32 = 0.9;
     let mono_to_stereo = ApplyInterleaved::<f32, f32>::new(move |v: &f32, d: &mut [f32]| {
-        d[0] = v * gain_l;
-        d[1] = v * gain_r;
+        d[0] = *v * gain_l;
+        d[1] = *v * gain_r;
     });
-    run_flow_graph(vec_size, slab_size, mono_to_stereo)
+    run_flow_graph(vec_size, slab_size, mono_to_stereo, None)
+}
+
+fn run_mono_to_stereo_nm(vec_size: usize, slab_size: usize) -> Result<()> {
+    let gain_l: f32 = 0.8;
+    let gain_r: f32 = 0.9;
+    let mono_to_stereo = ApplyNM::<f32, f32, 1, 2>::new(move |v: &[f32], d: &mut [f32]| {
+        d[0] =  v[0] * gain_l;
+        d[1] =  v[0] * gain_r;
+    });
+    run_flow_graph(vec_size, slab_size, mono_to_stereo, None)
+}
+
+fn run_mono_to_stereo_leftrightbalance(vec_size: usize, slab_size: usize) -> Result<()> {
+    let gain_l: f32 = 0.8;
+    let gain_r: f32 = 0.9;
+    let mono_to_stereo = LeftRightBalanceInterleaved::new(gain_l, gain_r);
+    run_flow_graph(vec_size, slab_size, mono_to_stereo, None)
 }
 
 #[repr(C)]
@@ -37,16 +57,20 @@ pub struct StereoSample {
     r: f32,
 }
 
-fn run_mono_to_stereo_on_struct(vec_size: usize, slab_size: usize) -> Result<()> {
+pub fn run_mono_to_stereo_on_struct(vec_size: usize, slab_size: usize) -> Result<()> {
     let gain_l: f32 = 0.8;
     let gain_r: f32 = 0.9;
     let mono_to_stereo = Apply::<f32, StereoSample>::new(move |v: &f32| -> StereoSample {
         StereoSample{l: *v * gain_l, r: *v * gain_r}
     });
-    run_flow_graph(vec_size, slab_size, mono_to_stereo)
+    let adapt_item_size = ApplyNM::<StereoSample, f32, 1, 2>::new(|v: &[StereoSample], d: &mut [f32]| {
+        d[0] = v[0].l;
+        d[1] = v[0].r;
+    });
+    run_flow_graph(vec_size, slab_size, mono_to_stereo, Some(adapt_item_size))
 }
 
-fn run_mono_to_stereo_on_struct_nm(vec_size: usize, slab_size: usize) -> Result<()> {
+pub fn run_mono_to_stereo_on_struct_nm(vec_size: usize, slab_size: usize) -> Result<()> {
     let gain_l: f32 = 0.8;
     let gain_r: f32 = 0.9;
     let mono_to_stereo = ApplyNM::<f32, f32, 1, 2>::new(move |v: &[f32], d: &mut [f32]| {
@@ -54,7 +78,7 @@ fn run_mono_to_stereo_on_struct_nm(vec_size: usize, slab_size: usize) -> Result<
         d[0] = o.l;
         d[1] = o.r;
     });
-    run_flow_graph(vec_size, slab_size, mono_to_stereo)
+    run_flow_graph(vec_size, slab_size, mono_to_stereo, None)
 }
 
 fn run_mono_to_stereo_nm_fast(vec_size: usize, slab_size: usize) -> Result<()> {
@@ -71,10 +95,10 @@ fn run_mono_to_stereo_nm_fast(vec_size: usize, slab_size: usize) -> Result<()> {
             assert!(false);
         }
     });
-    run_flow_graph(vec_size, slab_size, mono_to_stereo)
+    run_flow_graph(vec_size, slab_size, mono_to_stereo, None)
 }
 
-fn run_flow_graph(vec_size: usize, slab_size: usize, mono_to_stereo: Block) -> Result<()> {
+fn run_flow_graph(vec_size: usize, slab_size: usize, mono_to_stereo: Block, adapter: Option<Block>) -> Result<()> {
 
     let mut fg = Flowgraph::new();
 
@@ -87,8 +111,13 @@ fn run_flow_graph(vec_size: usize, slab_size: usize, mono_to_stereo: Block) -> R
     let mono_to_stereo = fg.add_block(mono_to_stereo);
 
     fg.connect_stream_with_type(src, "out", mono_to_stereo, "in", Slab::with_size(slab_size))?;
-    fg.connect_stream_with_type(mono_to_stereo, "out", snk, "in", Slab::with_size(slab_size))?;
-
+    if let Some(adapter) = adapter {
+        let adapter = fg.add_block(adapter);
+        fg.connect_stream_with_type(mono_to_stereo, "out", adapter, "in", Slab::with_size(slab_size))?;
+        fg.connect_stream_with_type(adapter, "out", snk, "in", Slab::with_size(slab_size))?;
+    } else {
+        fg.connect_stream_with_type(mono_to_stereo, "out", snk, "in", Slab::with_size(slab_size))?;
+    }
     Runtime::new().run(fg)?;
 
     Ok(())
@@ -116,36 +145,50 @@ fn mono_to_stereo_4096(bencher: &mut Bencher) {
 }
 
 #[bench]
-fn mono_to_stereo_1024_on_struct(bencher: &mut Bencher) {
+fn mono_to_stereo_4096_applynm(bencher: &mut Bencher) {
     bencher.iter(|| {
-        _ = run_mono_to_stereo_on_struct(4096, 1024);
+        _ = run_mono_to_stereo_nm(4096, 4096);
     });
 }
 
-#[bench]
-fn mono_to_stereo_2048_on_struct(bencher: &mut Bencher) {
-    bencher.iter(|| {
-        _ = run_mono_to_stereo_on_struct(4096, 2048);
-    });
-}
+// #[bench]
+// fn mono_to_stereo_1024_on_struct(bencher: &mut Bencher) {
+//     bencher.iter(|| {
+//         _ = run_mono_to_stereo_on_struct(4096, 1024);
+//     });
+// }
+
+// #[bench]
+// fn mono_to_stereo_2048_on_struct(bencher: &mut Bencher) {
+//     bencher.iter(|| {
+//         _ = run_mono_to_stereo_on_struct(4096, 2048);
+//     });
+// }
 
 #[bench]
-fn mono_to_stereo_4096_on_struct(bencher: &mut Bencher) {
+fn mono_to_stereo_4096_apply_on_struct(bencher: &mut Bencher) {
     bencher.iter(|| {
         _ = run_mono_to_stereo_on_struct(4096, 4096);
     });
 }
 
 #[bench]
-fn mono_to_stereo_4096_on_struct_nm(bencher: &mut Bencher) {
+fn mono_to_stereo_4096_applynm_with_struct(bencher: &mut Bencher) {
     bencher.iter(|| {
         _ = run_mono_to_stereo_on_struct_nm(4096, 4096);
     });
 }
 
 #[bench]
-fn mono_to_stereo_4096_nm_fast(bencher: &mut Bencher) {
+fn mono_to_stereo_4096_applynm_fast(bencher: &mut Bencher) {
     bencher.iter(|| {
         _ = run_mono_to_stereo_nm_fast(4096, 4096);
+    });
+}
+
+#[bench]
+fn mono_to_stereo_4096_dedicatedblock(bencher: &mut Bencher) {
+    bencher.iter(|| {
+        _ = run_mono_to_stereo_leftrightbalance(4096, 4096);
     });
 }
