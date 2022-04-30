@@ -41,13 +41,17 @@ ok, it works.
 
 Then, due to my machine being x64, I want to check that it use [SIMD](https://en.wikipedia.org/wiki/Single_instruction,_multiple_data) CPU instructions, in particular it should (be able to) use the `mulps` instruction. So let's look at the assembly:
 
+NB: Thanks @bastibl to remind me to add the target-cpu.
+
 ```sh
-RUSTFLAGS="--emit asm" cargo run --bin play-stereo --release
+RUSTFLAGS="-C target-cpu=native --emit asm" cargo run --bin play-stereo --release
 ```
 
 The assembly files would be found in a path like `./target/release/deps/play_stereo-79d67e2dfeee04c6.s`
 
-Not sure how to read the resulting `.s` files? Me neither. It seems to have a bunch of `mulps` SIMD instruction but can't tell if it is the ApplyInterleaved.
+I can found 10 `vmulps` in it.
+Yet, not sure how to read the resulting `.s` files? Me neither.
+It seems to have a bunch of `mulps` SIMD instruction but can't tell if it is the ApplyInterleaved.
 
 Ok, let's install some helpers:
 
@@ -71,13 +75,13 @@ cargo asm play_stereo::main::{{closure}}
 Indeed it is our code but it is not optimised with `mulps`.
 Yet, is it really the final code in the release binary?!
 
-NB: Should I force the inlining?
+NB: Should I enforce the inlining?
 
 Let's try with simpler code. Do something similar [within a bench](stereo_bench.rs). Rince. Repeat...
 Run bench for fun to compare effect of [Slab](https://www.futuresdr.org/blog/red-slab/):
 
 ```
-$ cargo bench --package audio --bench stereo-bench --all-features
+$RUSTFLAGS="-C target-cpu=native"  cargo bench --package audio --bench stereo-bench --all-features
     Finished bench [optimized + debuginfo] target(s) in 0.09s
      Running unittests (/home/loic/projets/FutureSDR/target/release/deps/stereo_bench-fc5d532628ec0c42)
 
@@ -99,7 +103,7 @@ cargo asm stereo_bench::run_mono_to_stereo::{{closure}} --rust
 
 Hum... :-/
 
-Next time, I will try the following structure as in [Nick Wilcox's Coding Blog post](https://www.nickwilcox.com/blog/autovec/).
+Let's try the following structure as in [Nick Wilcox's Coding Blog post](https://www.nickwilcox.com/blog/autovec/):
 
 ```rust
 #[repr(C)]
@@ -108,3 +112,17 @@ pub struct StereoSample {
     r: f32,
 }
 ```
+
+```
+$RUSTFLAGS="-C target-cpu=native" cargo bench --package audio --bench stereo-bench
+test mono_to_stereo_1024              ... bench:   1,626,142 ns/iter (+/- 132,791)
+test mono_to_stereo_1024_on_struct    ... bench:         857 ns/iter (+/- 85)
+test mono_to_stereo_2048              ... bench:   1,184,636 ns/iter (+/- 40,607)
+test mono_to_stereo_2048_on_struct    ... bench:       1,009 ns/iter (+/- 17)
+test mono_to_stereo_4096              ... bench:   1,182,559 ns/iter (+/- 284,008)
+test mono_to_stereo_4096_nm_fast      ... bench:   1,169,787 ns/iter (+/- 74,875)
+test mono_to_stereo_4096_on_struct    ... bench:       1,008 ns/iter (+/- 26)
+test mono_to_stereo_4096_on_struct_nm ... bench:   1,166,123 ns/iter (+/- 35,063)
+```
+
+Oh! Something different is happenning!
