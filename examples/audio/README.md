@@ -113,6 +113,9 @@ pub struct StereoSample {
 }
 ```
 
+Also @bastibl (again) points me to the `core_intrinsics::fmul_fast`.
+All in all, here is where I stand currently:
+
 ```
 $RUSTFLAGS="-C target-cpu=native" cargo bench --package audio --bench stereo-bench
 test mono_to_stereo_1024              ... bench:   1,626,142 ns/iter (+/- 132,791)
@@ -126,3 +129,7 @@ test mono_to_stereo_4096_on_struct_nm ... bench:   1,166,123 ns/iter (+/- 35,063
 ```
 
 Oh! Something different is happenning!
+I must not use  `core_intrinsics::fmul_fast` properly because it does not change anything.
+As in the original article, using the struct, clearly activate something because we get better timing result.
+
+To be continued...
