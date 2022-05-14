@@ -5,10 +5,10 @@ use std::mem;
 
 use crate::anyhow::{Context, Result};
 use crate::num_complex::Complex;
-use crate::runtime::AsyncKernel;
 use crate::runtime::Block;
 use crate::runtime::BlockMeta;
 use crate::runtime::BlockMetaBuilder;
+use crate::runtime::Kernel;
 use crate::runtime::MessageIo;
 use crate::runtime::MessageIoBuilder;
 use crate::runtime::Pmt;
@@ -16,6 +16,15 @@ use crate::runtime::StreamIo;
 use crate::runtime::StreamIoBuilder;
 use crate::runtime::WorkIo;
 
+/// [`soapysdr::Device`] source block
+///
+/// # Inputs
+/// * **Message**: `freq`: set the SDR's frequency; accepts a [`Pmt::U32`] value
+/// * **Message**: `sample_rate`: set the SDR's sample rate; accepts a [`Pmt::U32`] value
+///
+/// # Outputs
+/// * **Stream**: `out`: stream of [`Complex<f32>`] values
+///
 pub struct SoapySource {
     dev: Option<soapysdr::Device>,
     stream: Option<soapysdr::RxStream<Complex<f32>>>,
@@ -27,13 +36,13 @@ pub struct SoapySource {
 
 impl SoapySource {
     pub fn new(freq: f64, sample_rate: f64, gain: f64, filter: String) -> Block {
-        Block::new_async(
+        Block::new(
             BlockMetaBuilder::new("SoapySource").blocking().build(),
             StreamIoBuilder::new()
                 .add_output("out", mem::size_of::<Complex<f32>>())
                 .build(),
             MessageIoBuilder::new()
-                .add_async_input(
+                .add_input(
                     "freq",
                     |block: &mut SoapySource,
                      _mio: &mut MessageIo<SoapySource>,
@@ -47,6 +56,25 @@ impl SoapySource {
                                     *f as f64,
                                     (),
                                 )?;
+                            }
+                            Ok(p)
+                        }
+                        .boxed()
+                    },
+                )
+                .add_input(
+                    "sample_rate",
+                    |block: &mut SoapySource,
+                     _mio: &mut MessageIo<SoapySource>,
+                     _meta: &mut BlockMeta,
+                     p: Pmt| {
+                        async move {
+                            if let Pmt::U32(ref r) = &p {
+                                block
+                                    .dev
+                                    .as_mut()
+                                    .context("no dev")?
+                                    .set_sample_rate(Rx, 0, *r as f64)?;
                             }
                             Ok(p)
                         }
@@ -67,7 +95,7 @@ impl SoapySource {
 }
 
 #[async_trait]
-impl AsyncKernel for SoapySource {
+impl Kernel for SoapySource {
     async fn work(
         &mut self,
         io: &mut WorkIo,
