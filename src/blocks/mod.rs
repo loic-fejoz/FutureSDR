@@ -108,6 +108,9 @@ mod message_source;
 #[cfg(not(target_arch = "wasm32"))]
 pub use message_source::{MessageSource, MessageSourceBuilder};
 
+mod multistreamsink;
+pub use multistreamsink::MultistreamSink;
+
 mod null_sink;
 pub use null_sink::NullSink;
 mod null_source;

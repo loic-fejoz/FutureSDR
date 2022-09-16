@@ -5,13 +5,78 @@ use futuresdr::blocks::audio::AudioSink;
 use futuresdr::blocks::Apply;
 use futuresdr::blocks::FileSource;
 use futuresdr::blocks::FirBuilder;
+use futuresdr::blocks::MultistreamSink;
 use futuresdr::num_integer::gcd;
 use futuresdr::runtime::buffer::slab::Slab;
 use futuresdr::runtime::Flowgraph;
 use futuresdr::runtime::Runtime;
 use num_complex::Complex;
 
+use axum::response::Html;
+use axum::Extension;
+use futures::stream;
+use std::io;
+use axum::routing::get;
+use axum::Router;
+use axum::body::{Bytes, StreamBody};
+// use futures::channel::mpsc;
+// use futures::channel::oneshot;
+use futures::prelude::*;
+use tower_http::add_extension::AddExtensionLayer;
+use tower_http::cors::CorsLayer;
+use std::sync::{Arc, Mutex};
+
 // Inspired by https://wiki.gnuradio.org/index.php/Simulation_example:_Single_Sideband_transceiver
+
+async fn my_route() -> Html<&'static str> {
+    Html(
+        r#"
+    <html>
+        <head>
+            <meta charset='utf-8' />
+            <title>FutureSDR</title>
+        </head>
+        <body>
+            <h1>My Custom Route</h1>
+            Visit <a href="/stream.txt">stream</a>
+            <audio controls>
+                <source src=/stream.wav" type="audio/vnd.wav;codec=1" preload="none">
+                Your browser does not support the audio element.
+            </audio>
+        </body>
+    </html>
+    "#,
+    )
+}
+
+async fn handler_my_sound(
+    Extension(streams): Extension<Arc<Mutex<Vec<futures::channel::mpsc::Sender<f32>>>>>,
+) -> StreamBody<impl Stream<Item = io::Result<Bytes>>> {
+
+    //TODO https://stackoverflow.com/questions/59065564/http-realtime-audio-streaming-server
+    //TODO https://stackoverflow.com/questions/51079338/audio-livestreaming-with-python-flask
+
+    let mem = Bytes::from("Hello world");
+    let a = mem.slice(0..5);
+    let chunks: Vec<io::Result<_>> = vec![
+        Ok(a),
+        Ok(mem.slice(5..6)),
+        Ok(mem.slice(6..)),
+    ];
+
+    let stream = stream::iter(chunks);
+
+    let stream = stream.chain(
+        MultistreamSink::<f32>::build_new_stream(streams, 1000).map(
+            |a|{
+                let bytes = a.to_le_bytes().to_vec();
+                let bytes = axum::body::Bytes::from(bytes);
+                Ok(bytes)
+            }
+        )
+    );
+    StreamBody::new(stream)
+}
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -95,7 +160,7 @@ fn main() -> Result<()> {
     // let zmq_snk = PubSinkBuilder::new(8)
     //         .address("tcp://127.0.0.1:50001")
     //         .build();
-
+   
     let snk = AudioSink::new(audio_rate, 1);
 
     let src = fg.add_block(src);
@@ -105,12 +170,28 @@ fn main() -> Result<()> {
     let snk = fg.add_block(snk);
     // let zmq_snk = fg.add_block(zmq_snk);
 
+    // Send bytes into audio stream
+    let streams = Vec::<futures::channel::mpsc::Sender<f32>>::new();
+    let streams = Arc::new(Mutex::new(streams));
+    let streaming_sink = MultistreamSink::<f32>::new(Arc::clone(&streams));
+    let streaming_sink = fg.add_block(streaming_sink);
     const SLAB_SIZE: usize = 2 * 2 * 8192;
     fg.connect_stream_with_type(src, "out", freq_xlating, "in", Slab::with_size(SLAB_SIZE))?;
     fg.connect_stream(freq_xlating, "out", low_pass_filter, "in")?;
     fg.connect_stream(low_pass_filter, "out", weaver_ssb_decode, "in")?;
+
     // fg.connect_stream(low_pass_filter, "out", zmq_snk, "in")?;
     fg.connect_stream(weaver_ssb_decode, "out", snk, "in")?;
+    fg.connect_stream(weaver_ssb_decode, "out", streaming_sink, "in")?;
+
+    let router = Router::new()
+        .route("/my_route/", get(my_route))
+        .route("/stream.txt", get(handler_my_sound))
+        .layer(AddExtensionLayer::new(Arc::clone(&streams)))
+        .layer(CorsLayer::permissive());
+    fg.set_custom_routes(router);
+
+    println!("Visit http://localhost:1337/my_route/");
 
     Runtime::new().run(fg)?;
 
