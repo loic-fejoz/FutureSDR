@@ -13,6 +13,7 @@ num-complex = "0.4.0"
 futures = "0.3.24"
 axum = "0.5.5"
 tower-http = { version = "0.3.3", features = ["add-extension", "cors"] }
+bytes = "1"
 
 
 [[bin]]

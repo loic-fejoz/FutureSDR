@@ -53,22 +53,30 @@ where
     ) -> Result<()> {
 
         let i = sio.input(0).slice::<T>();
-
-        let m = i.len();
+        let mut actual_streams = self.streams.lock().unwrap().clone();
+        println!("#channels: {}", actual_streams.len());
         let mut count = 0;
-        if m > 0 {
+        if i.len() > 0 {
             for v in i.iter() {
-                count = count + 1;
-                let mut actual_streams = self.streams.lock().unwrap().clone();
-                for sender in actual_streams.iter_mut() {
-                    sender.send(*v).await.unwrap();
-                }
+                // if actual_streams.iter().all(|sender| sender.poll_ready() == Ok(Async::Ready(_))) {
+                    for sender in actual_streams.iter_mut() {
+                        if sender.is_closed() {
+                            //self.streams.lock().unwrap().remove(sender);
+                            continue;
+                        }
+                        //sender.try_send(*v);
+                        if let std::result::Result::Err(err) = sender.send(*v).await {
+                            println!("stream closed: {:?}", err);
+                        }
+                    }
+                    count = count + 1;
+                // }
             }
 
-            sio.input(0).consume(m);
+            sio.input(0).consume(count);
         }
 
-        if sio.input(0).finished() && m == i.len() {
+        if sio.input(0).finished() && count == i.len() {
             io.finished = true;
         }
 
