@@ -14,19 +14,16 @@ use num_complex::Complex;
 
 use axum::response::Html;
 use axum::Extension;
-use futures::stream;
-use std::cell::RefCell;
+use futures::stream::Stream;
 use std::io;
 use axum::routing::get;
 use axum::Router;
 use axum::body::{Bytes, StreamBody};
 // use futures::channel::mpsc;
 // use futures::channel::oneshot;
-use futures::prelude::*;
 use tower_http::add_extension::AddExtensionLayer;
 use tower_http::cors::CorsLayer;
 use std::sync::{Arc, Mutex};
-use bytes::{BytesMut, BufMut};
 use futures::channel::mpsc::Receiver;
 
 
@@ -54,7 +51,7 @@ async fn my_route() -> Html<&'static str> {
 }
 
 struct DropReceiver {
-    receiver: Arc<Mutex<Receiver<f32>>>,
+   // receiver: Arc<Mutex<Receiver<f32>>>,
 }
 
 impl Drop for DropReceiver {
@@ -62,8 +59,8 @@ impl Drop for DropReceiver {
     /// https://docs.rs/tokio/0.1.22/tokio/sync/mpsc/index.html#clean-shutdown
     fn drop(&mut self) {
         println!("1 connexion closed!");
-        let mut receiver = self.receiver.lock().unwrap();
-        receiver.close();
+        // let mut receiver = self.receiver.lock().unwrap();
+        // receiver.close();
     }
 }
 
@@ -71,50 +68,8 @@ async fn handler_my_sound(
     Extension(streams): Extension<Arc<Mutex<Vec<futures::channel::mpsc::Sender<f32>>>>>,
 ) -> StreamBody<impl Stream<Item = io::Result<Bytes>>> {
 
-    //TODO https://stackoverflow.com/questions/59065564/http-realtime-audio-streaming-server
-    //TODO https://stackoverflow.com/questions/51079338/audio-livestreaming-with-python-flask
-
-    let datasize: u32 = 10240000; // Some veeery big number here instead of: #samples * channels * bitsPerSample // 8
-    let audio_rate: u32 = 48_000;
-    let channels: u32 = 1;
-    let bitsPerSample: u32 = 16;
-    let bytes_per_second: u32 = audio_rate * channels * bitsPerSample / 8;
-    let mut header = BytesMut::with_capacity(bytes_per_second as usize);
-    header.put(&b"RIFF"[..]);                                                   // (4byte) Marks file as RIFF
-    header.put_u32_le(datasize+36);                                             // (4byte) File size in bytes excluding this and RIFF marker
-    header.put(&b"WAVE"[..]);                                              // (4byte) File type
-    header.put(&b"fmt "[..]);                                      // (4byte) Format Chunk Marker
-    header.put_u32_le(16);                                         // (4byte) Length of above format data
-    header.put_u16_le(1);                                   // (2byte) Format type (1 - PCM)
-    header.put_u16_le(channels as u16);// o += (channels).to_bytes(2,'little')                                    // (2byte)
-    header.put_u32_le(audio_rate);// o += (sampleRate).to_bytes(4,'little')                                  // (4byte)
-    header.put_u32_le(bytes_per_second);// o += (sampleRate * channels * bitsPerSample // 8).to_bytes(4,'little')  // (4byte)
-    header.put_u16_le((channels * bitsPerSample / 8) as u16);// o += (channels * bitsPerSample // 8).to_bytes(2,'little')               // (2byte)
-    header.put_u16_le(bitsPerSample as u16);// o += (bitsPerSample).to_bytes(2,'little')                               // (2byte)
-    header.put(&b"data "[..]);// o += bytes("data",'ascii')                                              // (4byte) Data Chunk Marker
-    header.put_u32_le(datasize);// o += (datasize).to_bytes(4,'little')                                    // (4byte) Data size in bytes
-
-    let stream = stream::iter(header.to_vec()).map(
-        |a|{
-            let bytes = a.to_le_bytes().to_vec();
-            let bytes = axum::body::Bytes::from(bytes);
-            Ok(bytes)
-        }
-    );
-
-    let receiver = MultistreamSink::<f32>::build_new_stream(streams, 1000);
-    // TODO when this http connection is dropped, need to empty receiver and close it nicely
-    let stream = stream.chain(
-        receiver.map(
-            |a|{
-                let bytes = (((std::i16::MAX as f32)/512.0*a) as i16).to_le_bytes().to_vec();
-                let bytes = axum::body::Bytes::from(bytes);
-                Ok(bytes)
-            }
-        )
-    );
-    // let rec = Arc::new(Mutex::new(receiver));
-    // let _dropper = DropReceiver { receiver: Arc::clone(&rec) };
+    let _dropper = DropReceiver { /*receiver: Arc::clone(&rec) */};
+    let stream =  MultistreamSink::<f32>::as_riff_wav_stream(streams, 1_000);
     StreamBody::new(stream)
 }
 
