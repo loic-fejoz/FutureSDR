@@ -163,7 +163,15 @@ where
         static PREVIOUS_SENDERS_COUNT: AtomicUsize = AtomicUsize::new(0);
 
         let i = sio.input(0).slice::<T>();
-        let mut actual_streams = self.streams.lock().unwrap().clone();
+
+        let mut actual_streams = if let Ok(mut original_stream) = self.streams.lock() {
+            original_stream.retain(|sender| {
+                !(*sender).is_closed()
+            });
+            original_stream.clone()
+        } else {
+            Vec::new()
+        };
         let current_senders_count = actual_streams.len();
         if current_senders_count != PREVIOUS_SENDERS_COUNT.load(Ordering::Relaxed) {
             println!("#channels: {}", current_senders_count );
@@ -172,7 +180,6 @@ where
         let mut count = 0;
         if i.len() > 0 {
             for v in i.iter() {
-                // if actual_streams.iter().all(|sender| sender.poll_ready() == Ok(Async::Ready(_))) {
                     for sender in actual_streams.iter_mut() {
                         if sender.is_closed() {
                             //self.streams.lock().unwrap().remove(sender);
@@ -185,7 +192,6 @@ where
                         }
                     }
                     count = count + 1;
-                // }
             }
 
             sio.input(0).consume(count);
@@ -193,6 +199,9 @@ where
 
         if sio.input(0).finished() && count == i.len() {
             io.finished = true;
+            for sender in actual_streams.iter_mut() {
+                sender.close_channel();
+            }
         }
 
         Ok(())
