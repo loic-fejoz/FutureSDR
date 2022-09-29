@@ -11,7 +11,7 @@ use crate::runtime::StreamIo;
 use crate::runtime::StreamIoBuilder;
 use crate::runtime::WorkIo;
 
-/// Repeatedly applies a function to generate samples.
+/// Repeatedly apply a function to generate samples.
 ///
 /// # Inputs
 ///
@@ -60,6 +60,7 @@ where
     }
 }
 
+#[doc(hidden)]
 #[async_trait]
 impl<F, A> Kernel for Source<F, A>
 where

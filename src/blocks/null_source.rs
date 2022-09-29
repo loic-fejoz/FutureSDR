@@ -9,7 +9,7 @@ use crate::runtime::StreamIo;
 use crate::runtime::StreamIoBuilder;
 use crate::runtime::WorkIo;
 
-/// Generates a stream of zeroes
+/// Generate a stream of zeroes.
 ///
 /// # Inputs
 ///
@@ -48,6 +48,7 @@ impl<T: Send + 'static> NullSource<T> {
     }
 }
 
+#[doc(hidden)]
 #[async_trait]
 impl<T: Send + 'static> Kernel for NullSource<T> {
     async fn work(

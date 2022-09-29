@@ -9,7 +9,7 @@ use crate::runtime::StreamIo;
 use crate::runtime::StreamIoBuilder;
 use crate::runtime::WorkIo;
 
-/// Silently drops samples
+/// Drop samples.
 ///
 /// # Inputs
 ///
@@ -54,6 +54,7 @@ impl<T: Send + 'static> NullSink<T> {
     }
 }
 
+#[doc(hidden)]
 #[async_trait]
 impl<T: Send + 'static> Kernel for NullSink<T> {
     async fn work(

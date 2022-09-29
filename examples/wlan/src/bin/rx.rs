@@ -13,9 +13,8 @@ use futuresdr::num_complex::Complex32;
 use futuresdr::runtime::Flowgraph;
 use futuresdr::runtime::Pmt;
 use futuresdr::runtime::Runtime;
-use futuresdr::runtime::StreamInput;
-use futuresdr::runtime::StreamOutput;
 
+use wlan::fft_tag_propagation;
 use wlan::parse_channel;
 use wlan::Decoder;
 use wlan::Delay;
@@ -101,9 +100,9 @@ fn main() -> Result<()> {
     let (tx_frame, mut rx_frame) = mpsc::channel::<Pmt>(100);
     let message_pipe = fg.add_block(MessagePipe::new(tx_frame));
     fg.connect_message(decoder, "rx_frames", message_pipe, "in")?;
-    let blob_to_udp = fg.add_block(futuresdr::blocks::BlobToUdp::new("localhost:55555"));
+    let blob_to_udp = fg.add_block(futuresdr::blocks::BlobToUdp::new("127.0.0.1:55555"));
     fg.connect_message(decoder, "rx_frames", blob_to_udp, "in")?;
-    let blob_to_udp = fg.add_block(futuresdr::blocks::BlobToUdp::new("localhost:55556"));
+    let blob_to_udp = fg.add_block(futuresdr::blocks::BlobToUdp::new("127.0.0.1:55556"));
     fg.connect_message(decoder, "rftap", blob_to_udp, "in")?;
 
     let rt = Runtime::new();
@@ -120,13 +119,4 @@ fn main() -> Result<()> {
     });
 
     Ok(())
-}
-
-fn fft_tag_propagation(inputs: &mut [StreamInput], outputs: &mut [StreamOutput]) {
-    debug_assert_eq!(inputs[0].consumed().0, outputs[0].produced());
-    let (n, tags) = inputs[0].consumed();
-    // println!("fft produced {}   consumed {}   tags {:?}", outputs[0].produced(), n, tags);
-    for t in tags.iter().filter(|x| x.index < n) {
-        outputs[0].add_tag_abs(t.index, t.tag.clone());
-    }
 }

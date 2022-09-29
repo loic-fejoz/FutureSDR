@@ -4,8 +4,8 @@ use futuresdr::anyhow::Result;
 use futuresdr::blocks::Copy;
 use futuresdr::blocks::VectorSink;
 use futuresdr::blocks::VectorSinkBuilder;
-use futuresdr::blocks::VectorSourceBuilder;
-use futuresdr::blocks::ZynqBuilder;
+use futuresdr::blocks::VectorSource;
+use futuresdr::blocks::Zynq;
 use futuresdr::runtime::buffer::zynq::D2H;
 use futuresdr::runtime::buffer::zynq::H2D;
 use futuresdr::runtime::Flowgraph;
@@ -20,10 +20,9 @@ fn main() -> Result<()> {
         .take(n_items)
         .collect();
 
-    let src = VectorSourceBuilder::<u32>::new(orig.clone()).build();
+    let src = VectorSource::<u32>::new(orig.clone());
     let cpy = Copy::<u32>::new();
-    let zynq =
-        ZynqBuilder::<u32, u32>::new("uio4", "uio5", vec!["udmabuf0", "udmabuf1"]).build()?;
+    let zynq = Zynq::<u32, u32>::new("uio4", "uio5", vec!["udmabuf0", "udmabuf1"])?;
     let snk = VectorSinkBuilder::<u32>::new().build();
 
     let src = fg.add_block(src);

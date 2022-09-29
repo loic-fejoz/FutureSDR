@@ -36,13 +36,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 <meta http-equiv="content-type" content="text/html; charset=UTF-8">
 <title>..:: FutureSDR ::..</title>
 <link rel="shortcut icon" href="/favicon.png">
-
+<script src="/js/mermaid.min.js"></script>
 <script type="module">
     import init, {add_slider_u32} from "./futuresdr.js"
 
     const runWasm = async () => {
         const rustWasm = await init();
-        add_slider_u32("#freq_slider", "http://localhost:1337", 0, 0, 800000000, 900000000, 1000000);
+        add_slider_u32("#freq_slider", "http://127.0.0.1:1337", 0, 0, 800000000, 900000000, 1000000);
     };
 
     runWasm();

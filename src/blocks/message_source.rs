@@ -14,6 +14,7 @@ use crate::runtime::StreamIo;
 use crate::runtime::StreamIoBuilder;
 use crate::runtime::WorkIo;
 
+/// Output the same message periodically.
 pub struct MessageSource {
     message: Pmt,
     interval: Duration,
@@ -41,6 +42,7 @@ impl MessageSource {
     }
 }
 
+#[doc(hidden)]
 #[async_trait]
 impl Kernel for MessageSource {
     async fn work(

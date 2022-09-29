@@ -15,7 +15,7 @@ use crate::runtime::StreamIo;
 use crate::runtime::StreamIoBuilder;
 use crate::runtime::WorkIo;
 
-/// Computes an FFT
+/// Compute an FFT.
 ///
 /// This block computes the FFT on `len` samples at a time, outputting `len` samples per FFT.
 ///
@@ -45,6 +45,7 @@ pub struct Fft {
     scratch: Box<[Complex32]>,
 }
 
+/// Fft direction.
 pub enum FftDirection {
     Forward,
     Inverse,
@@ -90,6 +91,7 @@ impl Fft {
     }
 }
 
+#[doc(hidden)]
 #[async_trait]
 impl Kernel for Fft {
     async fn work(

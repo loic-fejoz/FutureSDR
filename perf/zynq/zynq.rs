@@ -5,9 +5,9 @@ use std::time::Instant;
 use futuresdr::anyhow::{Context, Result};
 use futuresdr::blocks::VectorSink;
 use futuresdr::blocks::VectorSinkBuilder;
-use futuresdr::blocks::VectorSourceBuilder;
-use futuresdr::blocks::ZynqBuilder;
-use futuresdr::blocks::ZynqSyncBuilder;
+use futuresdr::blocks::VectorSource;
+use futuresdr::blocks::Zynq;
+use futuresdr::blocks::ZynqSync;
 use futuresdr::runtime::buffer::zynq::D2H;
 use futuresdr::runtime::buffer::zynq::H2D;
 use futuresdr::runtime::Flowgraph;
@@ -68,21 +68,19 @@ fn main() -> Result<()> {
         .take(n_items)
         .collect();
 
-    let src = VectorSourceBuilder::<u32>::new(orig.clone()).build();
+    let src = VectorSource::<u32>::new(orig.clone());
     let zynq = if sync {
-        ZynqSyncBuilder::<u32, u32>::new(
+        ZynqSync::<u32, u32>::new(
             "uio4",
             "uio5",
             vec!["udmabuf0", "udmabuf1", "udmabuf2", "udmabuf3"],
-        )
-        .build()?
+        )?
     } else {
-        ZynqBuilder::<u32, u32>::new(
+        Zynq::<u32, u32>::new(
             "uio4",
             "uio5",
             vec!["udmabuf0", "udmabuf1", "udmabuf2", "udmabuf3"],
-        )
-        .build()?
+        )?
     };
     let snk = VectorSinkBuilder::<u32>::new()
         .init_capacity(n_items)

@@ -11,6 +11,7 @@ use crate::runtime::StreamIo;
 use crate::runtime::StreamIoBuilder;
 use crate::runtime::WorkIo;
 
+/// Apply a function to split a stream.
 pub struct Split<F, A, B, C>
 where
     F: FnMut(&A) -> (B, C) + Send + 'static,
@@ -50,6 +51,7 @@ where
     }
 }
 
+#[doc(hidden)]
 #[async_trait]
 impl<F, A, B, C> Kernel for Split<F, A, B, C>
 where

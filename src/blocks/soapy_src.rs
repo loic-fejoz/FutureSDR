@@ -16,7 +16,7 @@ use crate::runtime::StreamIo;
 use crate::runtime::StreamIoBuilder;
 use crate::runtime::WorkIo;
 
-/// [`soapysdr::Device`] source block
+/// Receive samples from a Soapy SDR device.
 ///
 /// # Inputs
 /// * **Message**: `freq`: set the SDR's frequency; accepts a [`Pmt::U32`] value
@@ -33,6 +33,7 @@ pub struct SoapySource {
     gain: f64,
     filter: String,
     antenna: Option<String>,
+    chan: usize,
 }
 
 impl SoapySource {
@@ -42,6 +43,7 @@ impl SoapySource {
         gain: f64,
         filter: String,
         antenna: Option<S>,
+        chan: usize,
     ) -> Block
     where
         S: Into<String>,
@@ -109,11 +111,13 @@ impl SoapySource {
                 gain,
                 filter,
                 antenna: antenna.map(Into::into),
+                chan,
             },
         )
     }
 }
 
+#[doc(hidden)]
 #[async_trait]
 impl Kernel for SoapySource {
     async fn work(
@@ -143,7 +147,8 @@ impl Kernel for SoapySource {
         _mio: &mut MessageIo<Self>,
         _meta: &mut BlockMeta,
     ) -> Result<()> {
-        let channel: usize = 0;
+        let _ = super::soapy_snk::SOAPY_INIT.lock().await;
+        let channel = self.chan;
         soapysdr::configure_logging();
         self.dev = Some(soapysdr::Device::new(self.filter.as_str())?);
         let dev = self.dev.as_ref().context("no dev")?;
@@ -176,7 +181,7 @@ impl Kernel for SoapySource {
 
 unsafe impl Sync for SoapySource {}
 
-/// Read samples from a SoapySDR source
+/// Build a [SoapySource].
 ///
 /// # Inputs
 ///
@@ -210,6 +215,7 @@ pub struct SoapySourceBuilder {
     gain: f64,
     filter: String,
     antenna: Option<String>,
+    chan: usize,
 }
 
 impl SoapySourceBuilder {
@@ -250,6 +256,12 @@ impl SoapySourceBuilder {
         self
     }
 
+    /// Set channel number.
+    pub fn channel(mut self, chan: usize) -> SoapySourceBuilder {
+        self.chan = chan;
+        self
+    }
+
     /// Build [`SoapySource`]
     pub fn build(self) -> Block {
         SoapySource::new(
@@ -258,6 +270,7 @@ impl SoapySourceBuilder {
             self.gain,
             self.filter,
             self.antenna,
+            self.chan,
         )
     }
 }

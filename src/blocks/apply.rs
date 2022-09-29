@@ -11,7 +11,7 @@ use crate::runtime::StreamIo;
 use crate::runtime::StreamIoBuilder;
 use crate::runtime::WorkIo;
 
-/// Applies a function to each sample in the stream.
+/// Apply a function to each sample.
 ///
 /// # Inputs
 ///
@@ -82,6 +82,7 @@ where
     }
 }
 
+#[doc(hidden)]
 #[async_trait]
 impl<F, A, B> Kernel for Apply<F, A, B>
 where

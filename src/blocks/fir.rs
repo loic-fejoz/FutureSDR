@@ -15,6 +15,7 @@ use futuredsp::firdes;
 use futuredsp::{TapsAccessor, UnaryKernel};
 use num_integer;
 
+/// FIR filter.
 pub struct Fir<InputType, OutputType, TapType, Core>
 where
     InputType: 'static + Send,
@@ -62,6 +63,7 @@ where
     }
 }
 
+#[doc(hidden)]
 #[async_trait]
 impl<InputType, OutputType, TapType, Core> Kernel for Fir<InputType, OutputType, TapType, Core>
 where
@@ -93,9 +95,9 @@ where
     }
 }
 
-/// Creates a generic FIR filter.
+/// Create a [Fir] filter.
 ///
-/// Uses the `futuredsp` to pick the optimal FIR implementation for the given
+/// Uses `futuredsp` to pick the optimal FIR implementation for the given
 /// constraints.
 ///
 /// Note that there must be an implementation of [futuredsp::TapsAccessor] for

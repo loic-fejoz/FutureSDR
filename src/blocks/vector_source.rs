@@ -13,6 +13,7 @@ use crate::runtime::StreamIo;
 use crate::runtime::StreamIoBuilder;
 use crate::runtime::WorkIo;
 
+/// Stream samples from vector.
 pub struct VectorSource<T> {
     items: Vec<T>,
     n_copied: usize,
@@ -31,6 +32,7 @@ impl<T: Send + 'static> VectorSource<T> {
     }
 }
 
+#[doc(hidden)]
 #[async_trait]
 impl<T: Send + 'static> Kernel for VectorSource<T> {
     async fn work(
@@ -61,19 +63,5 @@ impl<T: Send + 'static> Kernel for VectorSource<T> {
         }
 
         Ok(())
-    }
-}
-
-pub struct VectorSourceBuilder<T> {
-    items: Vec<T>,
-}
-
-impl<T: Send + 'static> VectorSourceBuilder<T> {
-    pub fn new(items: Vec<T>) -> VectorSourceBuilder<T> {
-        VectorSourceBuilder { items }
-    }
-
-    pub fn build(self) -> Block {
-        VectorSource::new(self.items)
     }
 }

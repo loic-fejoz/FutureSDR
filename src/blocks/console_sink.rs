@@ -9,6 +9,7 @@ use crate::runtime::StreamIo;
 use crate::runtime::StreamIoBuilder;
 use crate::runtime::WorkIo;
 
+/// Log stream data with [log::info!].
 pub struct ConsoleSink<T: Send + 'static + std::fmt::Debug> {
     sep: String,
     _type: std::marker::PhantomData<T>,
@@ -30,6 +31,7 @@ impl<T: Send + 'static + std::fmt::Debug> ConsoleSink<T> {
     }
 }
 
+#[doc(hidden)]
 #[async_trait]
 impl<T: Send + 'static + std::fmt::Debug> Kernel for ConsoleSink<T> {
     async fn work(

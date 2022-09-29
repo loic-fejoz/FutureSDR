@@ -16,7 +16,9 @@ use crate::runtime::StreamIo;
 use crate::runtime::StreamIoBuilder;
 use crate::runtime::WorkIo;
 
-/// [`soapysdr::Device`] sink block
+pub(super) static SOAPY_INIT: async_lock::Mutex<()> = async_lock::Mutex::new(());
+
+/// Transmit samples with a Soapy SDR device.
 ///
 /// # Inputs
 /// * **Message**: `freq`: set the SDR's frequency; accepts a [`Pmt::U32`] value
@@ -31,6 +33,7 @@ pub struct SoapySink {
     gain: f64,
     filter: String,
     antenna: Option<String>,
+    chan: usize,
 }
 
 impl SoapySink {
@@ -40,6 +43,7 @@ impl SoapySink {
         gain: f64,
         filter: String,
         antenna: Option<S>,
+        chan: usize,
     ) -> Block
     where
         S: Into<String>,
@@ -98,11 +102,13 @@ impl SoapySink {
                 gain,
                 filter,
                 antenna: antenna.map(Into::into),
+                chan,
             },
         )
     }
 }
 
+#[doc(hidden)]
 #[async_trait]
 impl Kernel for SoapySink {
     async fn work(
@@ -137,7 +143,8 @@ impl Kernel for SoapySink {
         _mio: &mut MessageIo<Self>,
         _meta: &mut BlockMeta,
     ) -> Result<()> {
-        let channel: usize = 0;
+        let _ = SOAPY_INIT.lock().await;
+        let channel = self.chan;
         soapysdr::configure_logging();
         self.dev = Some(soapysdr::Device::new(self.filter.as_str())?);
         let dev = self.dev.as_ref().context("no dev")?;
@@ -170,7 +177,7 @@ impl Kernel for SoapySink {
 
 unsafe impl Sync for SoapySink {}
 
-/// Read samples from a SoapySDR source
+/// Build a [SoapySink].
 ///
 /// # Inputs
 ///
@@ -201,6 +208,7 @@ pub struct SoapySinkBuilder {
     gain: f64,
     filter: String,
     antenna: Option<String>,
+    chan: usize,
 }
 
 impl SoapySinkBuilder {
@@ -241,6 +249,12 @@ impl SoapySinkBuilder {
         self
     }
 
+    /// Set channel.
+    pub fn channel(mut self, chan: usize) -> SoapySinkBuilder {
+        self.chan = chan;
+        self
+    }
+
     /// Build [`SoapySink`]
     pub fn build(self) -> Block {
         SoapySink::new(
@@ -249,6 +263,7 @@ impl SoapySinkBuilder {
             self.gain,
             self.filter,
             self.antenna,
+            self.chan,
         )
     }
 }

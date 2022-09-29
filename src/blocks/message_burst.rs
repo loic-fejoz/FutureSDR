@@ -10,6 +10,7 @@ use crate::runtime::StreamIo;
 use crate::runtime::StreamIoBuilder;
 use crate::runtime::WorkIo;
 
+/// Output a given number of messages in one burst and terminate.
 pub struct MessageBurst {
     message: Pmt,
     n_messages: u64,
@@ -29,6 +30,7 @@ impl MessageBurst {
     }
 }
 
+#[doc(hidden)]
 #[async_trait]
 impl Kernel for MessageBurst {
     async fn work(
@@ -47,6 +49,7 @@ impl Kernel for MessageBurst {
     }
 }
 
+/// Build a [MessageBurst].
 pub struct MessageBurstBuilder {
     message: Pmt,
     n_messages: u64,

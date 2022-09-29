@@ -9,6 +9,7 @@ use crate::runtime::StreamIo;
 use crate::runtime::StreamIoBuilder;
 use crate::runtime::WorkIo;
 
+/// Push samples into [ZeroMQ](https://zeromq.org/) socket.
 pub struct PubSink {
     item_size: usize,
     address: String,
@@ -30,6 +31,7 @@ impl PubSink {
     }
 }
 
+#[doc(hidden)]
 #[async_trait]
 impl Kernel for PubSink {
     async fn work(
@@ -71,6 +73,7 @@ impl Kernel for PubSink {
     }
 }
 
+/// Build a ZeroMQ [PubSink].
 pub struct PubSinkBuilder {
     item_size: usize,
     address: String,

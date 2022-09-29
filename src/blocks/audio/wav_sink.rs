@@ -13,13 +13,13 @@ use crate::runtime::StreamIo;
 use crate::runtime::StreamIoBuilder;
 use crate::runtime::WorkIo;
 
-/// A sink serializing into Wav file
+/// Write samples to a WAV file.
 ///
 /// # Usage
 /// ```
 /// use futuresdr::blocks::Apply;
 /// use futuresdr::blocks::audio::WavSink;
-/// use futuresdr::blocks::VectorSourceBuilder;
+/// use futuresdr::blocks::VectorSource;
 /// use futuresdr::runtime::Flowgraph;
 /// use futuresdr::runtime::Runtime;
 /// use std::path::Path;
@@ -33,7 +33,7 @@ use crate::runtime::WorkIo;
 ///     sample_format: hound::SampleFormat::Float,
 /// };
 /// let mut fg = Flowgraph::new();
-/// let src = fg.add_block(VectorSourceBuilder::<f32>::new(vec![1.45, 2.4, 3.14, 4.2]).build());
+/// let src = fg.add_block(VectorSource::<f32>::new(vec![1.45, 2.4, 3.14, 4.2]));
 /// let snk = fg.add_block(WavSink::<f32>::new(path, spec));
 /// Runtime::new().run(fg);
 /// ```
@@ -65,6 +65,7 @@ impl<T: Send + 'static + hound::Sample + Copy> WavSink<T> {
     }
 }
 
+#[doc(hidden)]
 #[async_trait]
 impl<T: Send + 'static + hound::Sample + Copy> Kernel for WavSink<T> {
     async fn work(

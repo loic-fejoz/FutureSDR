@@ -211,12 +211,11 @@ impl StreamOutput {
             return;
         }
 
-        // fixme: this should probably keep the tags
-        // that correspond future samples
-        self.writer
-            .as_mut()
-            .unwrap()
-            .produce(self.offset, std::mem::take(&mut self.tags));
+        let mut tmp = self.tags.clone();
+        tmp.retain(|x| x.index < self.offset);
+        self.tags.retain(|x| x.index >= self.offset);
+
+        self.writer.as_mut().unwrap().produce(self.offset, tmp);
         self.offset = 0;
     }
 

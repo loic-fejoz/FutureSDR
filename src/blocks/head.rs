@@ -12,7 +12,7 @@ use crate::runtime::StreamIo;
 use crate::runtime::StreamIoBuilder;
 use crate::runtime::WorkIo;
 
-/// Stops the graph after the given number of samples
+/// Copies only a given number of samples and stops.
 ///
 /// # Inputs
 ///
@@ -53,6 +53,7 @@ impl<T: Send + 'static> Head<T> {
     }
 }
 
+#[doc(hidden)]
 #[async_trait]
 impl<T: Send + 'static> Kernel for Head<T> {
     async fn work(

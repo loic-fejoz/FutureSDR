@@ -14,6 +14,7 @@ use crate::runtime::StreamIo;
 use crate::runtime::StreamIoBuilder;
 use crate::runtime::WorkIo;
 
+/// Read an audio file and output its samples.
 pub struct FileSource {
     src: Box<dyn Source<Item = f32> + Send>,
 }
@@ -43,6 +44,7 @@ impl FileSource {
     }
 }
 
+#[doc(hidden)]
 #[async_trait]
 impl Kernel for FileSource {
     async fn work(

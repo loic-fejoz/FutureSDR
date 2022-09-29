@@ -9,7 +9,7 @@ use crate::runtime::StreamIo;
 use crate::runtime::StreamIoBuilder;
 use crate::runtime::WorkIo;
 
-/// Drops samples, printing tags.
+/// Drop samples, printing tags.
 ///
 /// Console output is prefixed with the `name` to help differentiate the output from multiple tag debug blocks.
 ///
@@ -54,6 +54,7 @@ impl<T: Send + 'static> TagDebug<T> {
     }
 }
 
+#[doc(hidden)]
 #[async_trait]
 impl<T: Send + 'static> Kernel for TagDebug<T> {
     async fn work(

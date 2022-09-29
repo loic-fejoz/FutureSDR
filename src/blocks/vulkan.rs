@@ -48,6 +48,7 @@ void main() {
     }
 }
 
+/// Interface GPU with Vulkan.
 pub struct Vulkan {
     broker: Arc<Broker>,
     capacity: u64,
@@ -84,6 +85,7 @@ fn i(sio: &mut StreamIo, id: usize) -> &mut ReaderH2D {
     sio.input(id).try_as::<ReaderH2D>().unwrap()
 }
 
+#[doc(hidden)]
 #[async_trait]
 impl Kernel for Vulkan {
     async fn init(
@@ -198,6 +200,7 @@ impl Kernel for Vulkan {
     }
 }
 
+/// Build [Vulkan] block.
 pub struct VulkanBuilder {
     broker: Arc<Broker>,
     capacity: u64,

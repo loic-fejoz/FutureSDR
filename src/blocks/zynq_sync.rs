@@ -18,6 +18,7 @@ use crate::runtime::StreamIo;
 use crate::runtime::StreamIoBuilder;
 use crate::runtime::WorkIo;
 
+/// Interface Zynq FPGA w/ AXI DMA (sync mode).
 pub struct ZynqSync<I, O>
 where
     I: Send + 'static,
@@ -37,8 +38,8 @@ where
     O: Send + 'static,
 {
     pub fn new<S: Into<String>>(
-        dma_h2d: String,
-        dma_d2h: String,
+        dma_h2d: impl AsRef<str>,
+        dma_d2h: impl AsRef<str>,
         dma_buffs: Vec<S>,
     ) -> Result<Block> {
         assert!(dma_buffs.len() > 1);
@@ -52,8 +53,8 @@ where
                 .build(),
             MessageIoBuilder::<ZynqSync<I, O>>::new().build(),
             ZynqSync {
-                dma_h2d: AxiDma::new(&dma_h2d)?,
-                dma_d2h: AxiDma::new(&dma_d2h)?,
+                dma_h2d: AxiDma::new(dma_h2d.as_ref())?,
+                dma_d2h: AxiDma::new(dma_d2h.as_ref())?,
                 dma_buffs,
                 output_buffers: Vec::new(),
                 input_data: PhantomData,
@@ -143,42 +144,5 @@ where
         }
 
         Ok(())
-    }
-}
-
-pub struct ZynqSyncBuilder<I, O>
-where
-    I: Send + 'static,
-    O: Send + 'static,
-{
-    dma_h2d: String,
-    dma_d2h: String,
-    dma_buffs: Vec<String>,
-    _in: PhantomData<I>,
-    _out: PhantomData<O>,
-}
-
-impl<I, O> ZynqSyncBuilder<I, O>
-where
-    I: Send + 'static,
-    O: Send + 'static,
-{
-    pub fn new<S: Into<String>>(
-        dma_h2d: &str,
-        dma_d2h: &str,
-        dma_buffs: Vec<S>,
-    ) -> ZynqSyncBuilder<I, O> {
-        let dma_buffs = dma_buffs.into_iter().map(Into::into).collect();
-        ZynqSyncBuilder {
-            dma_h2d: dma_h2d.to_string(),
-            dma_d2h: dma_d2h.to_string(),
-            dma_buffs,
-            _in: PhantomData,
-            _out: PhantomData,
-        }
-    }
-
-    pub fn build(self) -> Result<Block> {
-        ZynqSync::<I, O>::new(self.dma_h2d, self.dma_d2h, self.dma_buffs)
     }
 }

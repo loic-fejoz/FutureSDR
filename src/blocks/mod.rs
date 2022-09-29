@@ -1,40 +1,95 @@
-//! ## Generic blocks
+//! ## Block Library
+//! ## Functional/Apply-style Blocks
 //! | Block | Usage | WebAssembly? |
 //! |---|---|---|
-//! | [Apply] | Apply a function to each sample | ✅ |
-//! | [ApplyNM] | ApplyNM a function to each N input samples and produce M output samples | ✅ |
-//! | [Combine] | Apply a function to combine two streams into one | ✅ |
-//! | [Filter] | Apply a function to filter samples | ✅ |
+//! | [Apply] | Apply a function to each sample. | ✅ |
+//! | [ApplyIntoIter] | Apply a function on each input sample to create an iterator and output its values. | ✅ |
+//! | [ApplyNM] | Apply a function to each N input samples, producing M output samples. | ✅ |
+//! | [Combine] | Apply a function to combine two streams into one. | ✅ |
+//! | [Filter] | Apply a function, returning an [Option] to allow filtering samples. | ✅ |
+//! | [Source] | Repeatedly apply a function to generate samples. | ✅ |
+//! | [Split] | Apply a function to split a stream. | ✅ |
+//! | [FiniteSource] | Repeatedly apply a function to generate samples, using [Option] values to allow termination. | ✅ |
 //!
 //! ## DSP blocks
 //! | Block | Usage | WebAssembly? |
 //! |---|---|---|
-//! | [fir](FirBuilder) | Generic FIR filter, resampler | ✅ |
-//! | [fft](Fft) | Computes FFT | ✅ |
+//! | [Fft](Fft) | Compute an FFT. | ✅ |
+//! | [Fir](FirBuilder) | FIR filter and resampler. | ✅ |
+//! | [Iir](IirBuilder) | IIR filter. | ✅ |
 //!
-//! ## Limiting blocks
-//! | Block| Usage | WebAssembly? |
-//! |---|---|---|
-//! | [Throttle] | Limits graph sample rate | ❌ |
-//! | [Head] | Stops graph after specified number of samples | ✅ |
-//!
-//! ## Source/sink blocks
+//! ## Misc
 //! | Block | Usage | WebAssembly? |
 //! |---|---|---|
-//! | [FileSource] | Reads samples from a file | ❌ |
-//! | [SoapySink](SoapySinkBuilder) | Transmit samples with a soapy device | ❌ |
-//! | [SoapySource](SoapySourceBuilder) | Read samples from a soapy device | ❌ |
-//! | [Source] | Repeatedly apply a function to generate samples | ✅ |
-//! | [NullSource] | Generates a stream of zeros | ✅ |
-//! | [FileSink] | Writes samples to a file | ❌ |
-//! | [NullSink] | Drops samples | ✅ |
-//! | [TagSink] | Drops samples, printing tags. | ✅ |
-//! | [WavSink] | Writes samples to a WAV file | ❌ |
+//! | [ConsoleSink] | Log stream data with [log::info!]. | ✅ |
+//! | [Head] | Copies only a given number of samples and stops. | ✅ |
+//! | [NullSink] | Drops samples. | ✅ |
+//! | [NullSource] | Generates a stream of zeros. | ✅ |
+//! | [TagDebug] | Drop samples, printing tags. | ✅ |
+//! | [Throttle] | Limit sample rate. | ❌ |
+//! | [VectorSink] | Store received samples in vector. | ✅ |
+//! | [VectorSource] | Stream samples from vector. | ✅ |
 //!
-//! ## Message blocks
+//! ## Message Passing
 //! | Block | Usage | WebAssembly? |
 //! |---|---|---|
-//! | [MessageSource](MessageSourceBuilder) | Repeats a fixed message on an interval | ❌ |
+//! | [MessageBurst] | Output a given number of messages in one burst and terminate. | ✅ |
+//! | [MessageCopy] | Forward messages. | ✅ |
+//! | [MessagePipe] | Push received messages into a channel. | ✅ |
+//! | [MessageSink] | Black hole for messages. | ✅ |
+//! | [MessageSource](MessageSourceBuilder) | Output the same message periodically. | ✅ |
+//!
+//! ## Performance Evaluation
+//! | Block | Usage | WebAssembly? | Feature |
+//! |---|---|---|---|
+//! | [struct@Copy] | Copy input samples to the output. | ✅ | |
+//! | [CopyRand] | Copy input samples to the output, forwarding only a randomly selected number of samples. | ❌ | |
+//! | lttng::NullSource | Null source that calls an [lttng](https://lttng.org/) tracepoint for every batch of produced samples. | ❌ | lttng |
+//! | lttng:NullSink | Null sink that calls an [lttng](https://lttng.org/) tracepoint for every batch of received samples. | ❌ | lttng |
+//!
+//! ## I/O
+//! | Block | Usage | WebAssembly? |
+//! |---|---|---|
+//! | [BlobToUdp] | Push [Blobs](crate::runtime::Pmt::Blob) into a UDP socket. | ❌ |
+//! | [ChannelSource] | Push samples through a channel into a stream connection. | ✅ |
+//! | [FileSink] | Write samples to a file. | ❌ |
+//! | [FileSource] | Read samples from a file. | ❌ |
+//! | [TcpSource] | Reads samples from a TCP socket. | ❌ |
+//! | [TcpSink] | Push samples into a TCP socket. | ❌ |
+//! | [WebsocketSink] | Push samples in a WebSocket. | ❌ |
+//! | [zeromq::PubSink] | Push samples into [ZeroMQ](https://zeromq.org/) socket. | ❌ |
+//! | [zeromq::SubSource] | Read samples from [ZeroMQ](https://zeromq.org/) socket. | ❌ |
+//!
+//! ## SDR Hardware (requires `soapy` feature)
+//! | Block | Usage | WebAssembly? |
+//! |---|---|---|
+//! | [SoapySink](SoapySinkBuilder) | Transmit samples with a Soapy SDR device. | ❌ |
+//! | [SoapySource](SoapySourceBuilder) | Receive samples from a Soapy SDR device. | ❌ |
+//!
+//! ## Hardware Acceleration
+//! | Block | Usage | WebAssembly? | Feature |
+//! |---|---|---|---|
+//! | [Vulkan] | Interface GPU w/ Vulkan. | ❌ | `vulkan` |
+//! | [Wgpu] | Interface GPU w/ native API. | ✅ | `wgpu` |
+//! | [Zynq] | Interface Zynq FPGA w/ AXI DMA (async mode). | ❌ | `zynq` |
+//! | [ZynqSync] | Interface Zynq FPGA w/ AXI DMA (sync mode). | ❌ | `zynq` |
+//!
+//! ## WASM-specific (target `wasm32-unknown-unknown`)
+//! | Block | Usage | WebAssembly? |
+//! |---|---|---|
+//! | WasmSdr | Receive samples from web world. | ✅ |
+//! | WasmWsSink | Send samples via a WebSocket. | ✅ |
+//! | WasmFreq | Push samples to a GUI sink. | ✅ |
+//!
+//! ## Audio (requires `audio` feature)
+//! | Block | Usage | WebAssembly? |
+//! |---|---|---|
+//! | [AudioSink](audio::AudioSink) | Audio sink. | ❌ |
+//! | [AudioSource](audio::AudioSource) | Audio source. | ❌ |
+//! | [FileSource](audio::FileSource) | Read an audio file and output its samples. | ❌ |
+//! | [Oscillator](audio::Oscillator) | Create tone. | ✅ |
+//! | [WavSink](audio::WavSink) | Writes samples to a WAV file | ❌ |
+//!
 
 mod apply;
 pub use apply::Apply;
@@ -67,6 +122,7 @@ mod filter;
 pub use filter::Filter;
 
 mod fir;
+pub use fir::Fir;
 pub use fir::FirBuilder;
 
 mod fft;
@@ -97,11 +153,11 @@ pub mod lttng;
 mod message_burst;
 pub use message_burst::{MessageBurst, MessageBurstBuilder};
 mod message_copy;
-pub use message_copy::{MessageCopy, MessageCopyBuilder};
+pub use message_copy::MessageCopy;
 mod message_pipe;
 pub use message_pipe::MessagePipe;
 mod message_sink;
-pub use message_sink::{MessageSink, MessageSinkBuilder};
+pub use message_sink::MessageSink;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod message_source;
@@ -117,7 +173,7 @@ mod null_source;
 pub use null_source::NullSource;
 
 #[cfg(feature = "soapy")]
-mod soapy_snk;
+pub(self) mod soapy_snk;
 #[cfg(feature = "soapy")]
 pub use soapy_snk::{SoapySink, SoapySinkBuilder};
 #[cfg(feature = "soapy")]
@@ -136,22 +192,25 @@ pub use tag_debug::TagDebug;
 #[cfg(not(target_arch = "wasm32"))]
 mod tcp_sink;
 #[cfg(not(target_arch = "wasm32"))]
-pub use tcp_sink::{TcpSink, TcpSinkBuilder};
+pub use tcp_sink::TcpSink;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod tcp_source;
 #[cfg(not(target_arch = "wasm32"))]
-pub use tcp_source::{TcpSource, TcpSourceBuilder};
+pub use tcp_source::TcpSource;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod throttle;
 #[cfg(not(target_arch = "wasm32"))]
 pub use throttle::Throttle;
 
+mod channel_source;
+pub use channel_source::ChannelSource;
+
 mod vector_sink;
 pub use vector_sink::{VectorSink, VectorSinkBuilder};
 mod vector_source;
-pub use vector_source::{VectorSource, VectorSourceBuilder};
+pub use vector_source::VectorSource;
 
 #[cfg(feature = "vulkan")]
 mod vulkan;
@@ -183,9 +242,14 @@ pub mod zeromq;
 #[cfg(feature = "zynq")]
 mod zynq;
 #[cfg(feature = "zynq")]
-pub use zynq::{Zynq, ZynqBuilder};
+pub use zynq::Zynq;
 
 #[cfg(feature = "zynq")]
 mod zynq_sync;
 #[cfg(feature = "zynq")]
-pub use zynq_sync::{ZynqSync, ZynqSyncBuilder};
+pub use zynq_sync::ZynqSync;
+
+#[cfg(target_arch = "wasm32")]
+mod wasm_ws_sink;
+#[cfg(target_arch = "wasm32")]
+pub use wasm_ws_sink::WasmWsSink;

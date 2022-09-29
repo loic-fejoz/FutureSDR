@@ -13,6 +13,7 @@ use crate::runtime::WorkIo;
 use futuredsp::iir::IirKernel;
 use futuredsp::{StatefulUnaryKernel, TapsAccessor};
 
+/// IIR filter.
 pub struct Iir<InputType, OutputType, TapType, Core>
 where
     InputType: 'static + Send,
@@ -60,6 +61,7 @@ where
     }
 }
 
+#[doc(hidden)]
 #[async_trait]
 impl<InputType, OutputType, TapType, Core> Kernel for Iir<InputType, OutputType, TapType, Core>
 where
@@ -91,7 +93,7 @@ where
     }
 }
 
-/// Creates a generic IIR filter.
+/// Build an [Iir] filter.
 ///
 /// This filter consumes two sets of taps, `a_taps` and `b_taps`. `a_taps` are
 /// the feedback taps, and `b_taps` are the feed-forward taps. If there are `n`

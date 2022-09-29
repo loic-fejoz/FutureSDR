@@ -1,3 +1,4 @@
+//! ## SDR Runtime
 use futures::channel::mpsc;
 use futures::channel::oneshot;
 
@@ -8,6 +9,13 @@ pub mod config;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub mod ctrl_port;
+#[cfg(target_arch = "wasm32")]
+pub mod ctrl_port {
+    pub use futuresdr_pmt::BlockDescription;
+    pub use futuresdr_pmt::FlowgraphDescription;
+}
+use crate::runtime::ctrl_port::BlockDescription;
+use crate::runtime::ctrl_port::FlowgraphDescription;
 
 #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
 mod logging;
@@ -19,13 +27,13 @@ mod logging;
 mod logging;
 
 mod flowgraph;
-mod message_io;
+pub mod message_io;
 mod mocker;
 #[allow(clippy::module_inception)]
 mod runtime;
 pub mod scheduler;
-mod stream_io;
-pub mod tag;
+pub mod stream_io;
+mod tag;
 mod topology;
 
 pub use block::Block;
@@ -35,8 +43,6 @@ pub use block_meta::BlockMeta;
 pub use block_meta::BlockMetaBuilder;
 pub use flowgraph::Flowgraph;
 pub use flowgraph::FlowgraphHandle;
-pub use futuresdr_pmt::BlockDescription;
-pub use futuresdr_pmt::FlowgraphDescription;
 pub use futuresdr_pmt::Pmt;
 pub use message_io::MessageInput;
 pub use message_io::MessageIo;
@@ -60,6 +66,7 @@ use crate::runtime::buffer::BufferWriter;
 pub fn init() {
     logging::init();
 }
+
 #[derive(Debug)]
 pub enum FlowgraphMessage {
     Terminate,

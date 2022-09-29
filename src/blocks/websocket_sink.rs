@@ -24,12 +24,17 @@ use crate::runtime::StreamIo;
 use crate::runtime::StreamIoBuilder;
 use crate::runtime::WorkIo;
 
+/// Operation mode for [WebsocketSink].
 pub enum WebsocketSinkMode {
+    /// Backpressure. Block until all samples are sent.
     Blocking,
+    /// Sent samples in fixed-size chunks. Block until all samples are sent.
     FixedBlocking(usize),
+    /// Sent samples in fixed-size chunks. Drop first chunks if multiple are available in input buffer.
     FixedDropping(usize),
 }
 
+/// Push samples in a WebSocket.
 pub struct WebsocketSink<T> {
     port: u32,
     listener: Option<Arc<Async<TcpListener>>>,
@@ -57,6 +62,7 @@ impl<T: Send + Sync + 'static> WebsocketSink<T> {
     }
 }
 
+#[doc(hidden)]
 #[async_trait]
 impl<T: Send + Sync + 'static> Kernel for WebsocketSink<T> {
     async fn work(
@@ -165,6 +171,7 @@ impl<T: Send + Sync + 'static> Kernel for WebsocketSink<T> {
     }
 }
 
+/// Build a [WebsocketSink].
 pub struct WebsocketSinkBuilder<T> {
     port: u32,
     mode: WebsocketSinkMode,

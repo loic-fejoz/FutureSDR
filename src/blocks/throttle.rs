@@ -15,7 +15,7 @@ use crate::runtime::StreamIo;
 use crate::runtime::StreamIoBuilder;
 use crate::runtime::WorkIo;
 
-/// Limits the sample rate to the given value
+/// Limit sample rate.
 ///
 /// # Inputs
 ///
@@ -63,6 +63,7 @@ impl<T: Send + 'static> Throttle<T> {
     }
 }
 
+#[doc(hidden)]
 #[async_trait]
 impl<T: Send + 'static> Kernel for Throttle<T> {
     async fn work(
