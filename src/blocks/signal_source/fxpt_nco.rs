@@ -25,8 +25,20 @@ impl NCO {
     }
 
     /// `angle_rate` is in radians / step
+    #[deprecated]
     pub fn set_freq(&mut self, angle_rate: f32) {
         self.phase_inc = FixedPointPhase::new(angle_rate);
+    }
+
+    /// `angle_rate` is in radians / step
+    pub fn set_angle_rate(&mut self, angle_rate: f32) {
+        self.phase_inc = FixedPointPhase::new(angle_rate);
+    }
+
+    /// `freq` is in Hz
+    /// `sample_rate` is in Hz
+    pub fn set_frequency(&mut self, freq: f32, sample_rate: f32) {
+        self.phase_inc = FixedPointPhase::new(2.0 * core::f32::consts::PI * freq / sample_rate);
     }
 
     pub fn adjust_freq(&mut self, delta_angle_rate: f32) {

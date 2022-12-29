@@ -16,6 +16,9 @@ pub use fxpt_phase::FixedPointPhase;
 mod fxpt_nco;
 pub use fxpt_nco::NCO;
 
+mod controlled_oscillator;
+pub use controlled_oscillator::ControlledOscillatorBuilder;
+
 pub struct SignalSource<F, A>
 where
     F: FnMut(FixedPointPhase) -> A + Send + 'static,
