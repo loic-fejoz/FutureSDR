@@ -2,6 +2,7 @@
 #![allow(clippy::new_ret_no_self)]
 #![cfg_attr(not(RUSTC_IS_STABLE), feature(core_intrinsics))]
 #![cfg_attr(docsrs, feature(doc_cfg))]
+#![feature(adt_const_params)]
 
 //! An experimental asynchronous SDR runtime for heterogeneous architectures that is:
 //! * **Extensible**: custom buffers (supporting accelerators like GPUs and FPGAs) and custom schedulers (optimized for your application).

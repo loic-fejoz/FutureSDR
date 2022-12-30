@@ -1,0 +1,12 @@
+[package]
+name = "psk"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+
+[dependencies]
+rand = "0.8.5"
+clap = { version = "4.0.19", features = ["derive"] }
+futuresdr = { path = "../..", features=["zeromq"] }
+futuredsp = { path = "../../futuredsp" }
