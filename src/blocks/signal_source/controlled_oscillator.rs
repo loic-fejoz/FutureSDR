@@ -114,7 +114,10 @@ where
     A: Copy + Send + 'static,
     B: Send + 'static,
 {
-    pub fn initial_phase(mut self, initial_phase: f32) -> ControlledOscillatorInternalBuilder<A, B, S> {
+    pub fn initial_phase(
+        mut self,
+        initial_phase: f32,
+    ) -> ControlledOscillatorInternalBuilder<A, B, S> {
         self.initial_phase = initial_phase;
         self
     }
@@ -138,8 +141,8 @@ where
         sample_rate: f32,
         sensitivity: A,
         amplitude: B,
-    ) -> ControlledOscillatorInternalBuilder<A, B, {ControlKind::VCO}> {
-        ControlledOscillatorInternalBuilder::<A, B, {ControlKind::VCO}> {
+    ) -> ControlledOscillatorInternalBuilder<A, B, { ControlKind::VCO }> {
+        ControlledOscillatorInternalBuilder::<A, B, { ControlKind::VCO }> {
             sample_rate,
             initial_frequency: 0.0,
             initial_phase: 0.0,
@@ -156,8 +159,8 @@ where
         sample_rate: f32,
         sensitivity: A,
         amplitude: B,
-    ) -> ControlledOscillatorInternalBuilder<A, B, {ControlKind::VcoFreq}> {
-        ControlledOscillatorInternalBuilder::<A, B, {ControlKind::VcoFreq}> {
+    ) -> ControlledOscillatorInternalBuilder<A, B, { ControlKind::VcoFreq }> {
+        ControlledOscillatorInternalBuilder::<A, B, { ControlKind::VcoFreq }> {
             sample_rate,
             initial_frequency: 0.0,
             initial_phase: 0.0,
@@ -179,8 +182,8 @@ where
     pub fn bpsk(
         sample_rate: f32,
         frequency: f32,
-    ) ->  ControlledOscillatorInternalBuilder<A, B, {ControlKind::BPSK}> {
-        ControlledOscillatorInternalBuilder::<A, B, {ControlKind::BPSK}> {
+    ) -> ControlledOscillatorInternalBuilder<A, B, { ControlKind::BPSK }> {
+        ControlledOscillatorInternalBuilder::<A, B, { ControlKind::BPSK }> {
             sample_rate,
             initial_frequency: frequency,
             initial_phase: 0.0,
@@ -190,7 +193,7 @@ where
     }
 }
 
-impl<A> ControlledOscillatorInternalBuilder<A, f32, {ControlKind::VcoFreq}>
+impl<A> ControlledOscillatorInternalBuilder<A, f32, { ControlKind::VcoFreq }>
 where
     A: Copy + Send + 'static + Into<f32> + Mul + std::marker::Sync,
     // F: FnMut(A, &mut NCO) -> f32 + Send + 'static,
@@ -203,7 +206,8 @@ where
         );
         ControlledOscillator::new(
             move |v: &A, nco: &mut NCO| {
-                let freq: f32 = (*v * self.sensitivity.expect("sensitivity is mandatory for VCO")).into();
+                let freq: f32 =
+                    (*v * self.sensitivity.expect("sensitivity is mandatory for VCO")).into();
                 nco.set_frequency(freq, self.sample_rate);
                 nco.phase.cos() * self.amplitude
             },
@@ -212,7 +216,7 @@ where
     }
 }
 
-impl<A> ControlledOscillatorInternalBuilder<A, f32, {ControlKind::VCO}>
+impl<A> ControlledOscillatorInternalBuilder<A, f32, { ControlKind::VCO }>
 where
     A: Copy + Send + 'static + Into<f32> + Mul + std::marker::Sync,
     // F: FnMut(A, &mut NCO) -> f32 + Send + 'static,
@@ -225,7 +229,9 @@ where
         );
         ControlledOscillator::new(
             move |v: &A, nco: &mut NCO| {
-                let angle_rate: f32 = f32::from(*v * self.sensitivity.expect("sensitivity is mandatory for VCO")) / self.sample_rate;
+                let angle_rate: f32 =
+                    f32::from(*v * self.sensitivity.expect("sensitivity is mandatory for VCO"))
+                        / self.sample_rate;
                 nco.set_angle_rate(angle_rate);
                 nco.phase.cos() * self.amplitude
             },
@@ -234,7 +240,7 @@ where
     }
 }
 
-impl<A> ControlledOscillatorInternalBuilder<A, f32, {ControlKind::BPSK}>
+impl<A> ControlledOscillatorInternalBuilder<A, f32, { ControlKind::BPSK }>
 where
     A: Copy + Send + 'static + std::marker::Sync + std::cmp::PartialEq,
 {
@@ -257,7 +263,7 @@ where
     }
 }
 
-impl<A> ControlledOscillatorInternalBuilder<A, Complex32, {ControlKind::VcoFreq}>
+impl<A> ControlledOscillatorInternalBuilder<A, Complex32, { ControlKind::VcoFreq }>
 where
     A: Copy + Send + 'static + Into<f32> + Mul + std::marker::Sync,
     // F: FnMut(A, &mut NCO) -> f32 + Send + 'static,
@@ -270,7 +276,8 @@ where
         );
         ControlledOscillator::new(
             move |v: &A, nco: &mut NCO| {
-                let freq: f32 = (*v * self.sensitivity.expect("sensitivity is mandatory for VCO")).into();
+                let freq: f32 =
+                    (*v * self.sensitivity.expect("sensitivity is mandatory for VCO")).into();
                 nco.set_frequency(freq, self.sample_rate);
                 Complex32::new(nco.phase.cos(), nco.phase.sin()) * self.amplitude
             },
@@ -279,7 +286,7 @@ where
     }
 }
 
-impl<A> ControlledOscillatorInternalBuilder<A, Complex32, {ControlKind::VCO}>
+impl<A> ControlledOscillatorInternalBuilder<A, Complex32, { ControlKind::VCO }>
 where
     A: Copy + Send + 'static + Into<f32> + Mul + std::marker::Sync,
     // F: FnMut(A, &mut NCO) -> f32 + Send + 'static,
@@ -292,7 +299,9 @@ where
         );
         ControlledOscillator::new(
             move |v: &A, nco: &mut NCO| {
-                let angle_rate: f32 = f32::from(*v * self.sensitivity.expect("sensitivity is mandatory for VCO")) / self.sample_rate;
+                let angle_rate: f32 =
+                    f32::from(*v * self.sensitivity.expect("sensitivity is mandatory for VCO"))
+                        / self.sample_rate;
                 nco.set_angle_rate(angle_rate);
                 Complex32::new(nco.phase.cos(), nco.phase.sin()) * self.amplitude
             },
@@ -301,7 +310,7 @@ where
     }
 }
 
-impl<A> ControlledOscillatorInternalBuilder<A, Complex32, {ControlKind::BPSK}>
+impl<A> ControlledOscillatorInternalBuilder<A, Complex32, { ControlKind::BPSK }>
 where
     A: Copy + Send + 'static + std::marker::Sync + std::cmp::PartialEq,
 {
