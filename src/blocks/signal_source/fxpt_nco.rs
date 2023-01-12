@@ -1,4 +1,5 @@
 use crate::blocks::signal_source::FixedPointPhase;
+use crate::num_complex::Complex32;
 
 /// Numerically Controlled Oscillator
 #[derive(Debug, Clone, Copy)]
@@ -51,5 +52,15 @@ impl NCO {
 
     pub fn steps(&mut self, n: i32) {
         self.phase += self.phase_inc * n;
+    }
+}
+
+impl Iterator for NCO {
+    type Item = Complex32;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let result = Some(Complex32::from(self.phase));
+        self.step();
+        result
     }
 }

@@ -1,5 +1,5 @@
 [package]
-name = "psk"
+name = "l-system"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,5 +8,5 @@ edition = "2021"
 [dependencies]
 rand = "0.8.5"
 clap = { version = "4.0.19", features = ["derive"] }
-futuresdr = { path = "../..", features=["zeromq", "audio", "flow_scheduler"] }
+futuresdr = { path = "../..", features=["audio", "flow_scheduler", "tpb_scheduler"] }
 futuredsp = { path = "../../futuredsp" }

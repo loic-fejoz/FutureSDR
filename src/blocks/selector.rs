@@ -68,6 +68,15 @@ impl fmt::Display for DropPolicy {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FinishPolicy {
+    /// Stop when current input is finished
+    OnCurrent,
+
+    /// Select next input when current input is finished
+    MoveToNext,
+}
+
 /// Forward the input stream with a given index to the output stream with a
 /// given index.
 pub struct Selector<A, const N: usize, const M: usize>
@@ -77,6 +86,7 @@ where
     input_index: usize,
     output_index: usize,
     drop_policy: DropPolicy,
+    finish_policy: FinishPolicy,
     _p1: std::marker::PhantomData<A>,
 }
 
@@ -84,7 +94,7 @@ impl<A, const N: usize, const M: usize> Selector<A, N, M>
 where
     A: Send + 'static + Copy,
 {
-    pub fn new(drop_policy: DropPolicy) -> Block {
+    pub fn new(drop_policy: DropPolicy, finish_policy: FinishPolicy) -> Block {
         let mut stream_builder = StreamIoBuilder::new();
         for i in 0..N {
             stream_builder = stream_builder.add_input::<A>(format!("in{i}").as_str());
@@ -135,6 +145,7 @@ where
                 input_index: 0,
                 output_index: 0,
                 drop_policy,
+                finish_policy,
                 _p1: std::marker::PhantomData,
             },
         )
@@ -185,9 +196,19 @@ where
             }
         }
 
-        // Maybe this should be configurable behaviour? finish on current finish? when all input have finished?
         if sio.input(self.input_index).finished() && m == i.len() {
-            io.finished = true;
+            match self.finish_policy {
+                FinishPolicy::OnCurrent => {
+                    io.finished = true;
+                }
+                FinishPolicy::MoveToNext => {
+                    if self.input_index == N - 1 {
+                        io.finished = true;
+                    } else {
+                        self.input_index += 1;
+                    }
+                }
+            }
         }
 
         Ok(())

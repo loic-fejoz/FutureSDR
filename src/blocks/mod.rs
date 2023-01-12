@@ -186,6 +186,7 @@ pub use soapy::{SoapySink, SoapySinkBuilder, SoapySource, SoapySourceBuilder};
 
 mod selector;
 pub use selector::DropPolicy as SelectorDropPolicy;
+pub use selector::FinishPolicy as SelectorFinishPolicy;
 pub use selector::Selector;
 
 pub mod signal_source;

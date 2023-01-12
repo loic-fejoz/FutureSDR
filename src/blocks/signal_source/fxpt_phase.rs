@@ -1,3 +1,4 @@
+use crate::num_complex::Complex32;
 use std::fmt;
 use std::ops::Add;
 use std::ops::AddAssign;
@@ -58,6 +59,18 @@ impl Mul<i32> for FixedPointPhase {
         FixedPointPhase {
             value: self.value.wrapping_mul(other),
         }
+    }
+}
+
+// impl Into<Complex32> for FixedPointPhase {
+//     fn into(self) -> Complex32 {
+//         Complex32::new(self.cos(), self.sin())
+//     }
+// }
+
+impl From<FixedPointPhase> for Complex32 {
+    fn from(v: FixedPointPhase) -> Complex32 {
+        Complex32::new(v.cos(), v.sin())
     }
 }
 
