@@ -7,6 +7,7 @@ use crate::runtime::MessageIo;
 use crate::runtime::MessageIoBuilder;
 use crate::runtime::StreamIo;
 use crate::runtime::StreamIoBuilder;
+use crate::runtime::TypedBlock;
 use crate::runtime::WorkIo;
 
 /// Apply a function to each N input samples, producing M output samples.
@@ -43,7 +44,7 @@ use crate::runtime::WorkIo;
 #[allow(clippy::type_complexity)]
 pub struct ApplyNM<F, A, B, const N: usize, const M: usize>
 where
-    F: FnMut(&[A], &mut [B]) + Send + 'static,
+    F: FnMut(&[A; N], &mut [B; M]) + Send + 'static,
     A: Send + 'static,
     B: Send + 'static,
 {
@@ -54,7 +55,7 @@ where
 
 impl<F, A, B, const N: usize, const M: usize> ApplyNM<F, A, B, N, M>
 where
-    F: FnMut(&[A], &mut [B]) + Send + 'static,
+    F: FnMut(&[A; N], &mut [B; M]) + Send + 'static,
     A: Send + 'static,
     B: Send + 'static,
 {
@@ -74,13 +75,31 @@ where
             },
         )
     }
+
+    /// Create [`ApplyNM`] block
+    #[allow(clippy::new_ret_no_self)]
+    pub fn new_typed(f: F) -> TypedBlock<ApplyNM<F, A, B, N, M>> {
+        TypedBlock::new(
+            BlockMetaBuilder::new(format!("ApplyNM {N} {M}")).build(),
+            StreamIoBuilder::new()
+                .add_input::<A>("in")
+                .add_output::<B>("out")
+                .build(),
+            MessageIoBuilder::<Self>::new().build(),
+            ApplyNM {
+                f,
+                _p1: std::marker::PhantomData,
+                _p2: std::marker::PhantomData,
+            },
+        )
+    }
 }
 
 #[doc(hidden)]
 #[async_trait]
 impl<F, A, B, const N: usize, const M: usize> Kernel for ApplyNM<F, A, B, N, M>
 where
-    F: FnMut(&[A], &mut [B]) + Send + 'static,
+    F: FnMut(&[A; N], &mut [B; M]) + Send + 'static,
     A: Send + 'static,
     B: Send + 'static,
 {
@@ -99,6 +118,8 @@ where
         let m = std::cmp::min(i.len() / N, o.len() / M);
         if m > 0 {
             for (v, r) in i.chunks_exact(N).zip(o.chunks_exact_mut(M)) {
+                let v: &[A; N] = unsafe { v.try_into().unwrap_unchecked() };
+                let r: &mut [B; M] = unsafe { r.try_into().unwrap_unchecked() };
                 (self.f)(v, r);
             }
 
