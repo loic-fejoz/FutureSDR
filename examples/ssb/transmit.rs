@@ -5,16 +5,16 @@ use futuresdr::blocks::Apply;
 use futuresdr::blocks::ApplyNM;
 use futuresdr::blocks::Combine;
 use futuresdr::blocks::Delay;
-use futuresdr::blocks::FirBuilder;
 use futuresdr::blocks::FileSink;
+use futuresdr::blocks::FirBuilder;
 use futuresdr::blocks::Split;
 use futuresdr::futuredsp::firdes;
 use futuresdr::futuredsp::windows::hamming;
 use futuresdr::macros::connect;
+use futuresdr::num_complex::Complex32;
 use futuresdr::runtime::Flowgraph;
 use futuresdr::runtime::Runtime;
 use hound::{SampleFormat, WavSpec};
-use futuresdr::num_complex::Complex32;
 use std::f32::consts::TAU;
 use std::path::Path;
 
@@ -81,7 +81,11 @@ fn main() -> Result<()> {
 
     // Using a bandpass instead, can help to tame low frequencies bleeding
     // ouside of the chosen bandwidth.
-    let taps = firdes::kaiser::lowpass(cli.audio_bandwidth as f64 / audio_rate, 350.0 / audio_rate, 0.05);
+    let taps = firdes::kaiser::lowpass(
+        cli.audio_bandwidth as f64 / audio_rate,
+        350.0 / audio_rate,
+        0.05,
+    );
     let lowpass = FirBuilder::new::<f32, f32, _, _>(taps);
 
     let split = Split::new(move |v: &f32| (*v, *v));
@@ -100,7 +104,8 @@ fn main() -> Result<()> {
         Mode::USB => Complex32::new(*i, *q),
     });
 
-    let resampler = FirBuilder::new_resampling::<Complex32, Complex32>(file_rate as usize, audio_rate as usize);
+    let resampler =
+        FirBuilder::new_resampling::<Complex32, Complex32>(file_rate as usize, audio_rate as usize);
 
     let mut osc = Complex32::new(1.0, 0.0);
     let shift = Complex32::from_polar(1.0, TAU * cli.frequency / file_rate as f32);
@@ -126,7 +131,7 @@ fn main() -> Result<()> {
 
     // TODO Make this work with `ssb-receiver`.
     let dat = FileSink::<Complex32>::new(format!("{}.c32", cli.output));
-    
+
     connect!(fg,
         source > lowpass > split;
         split.out0 > delay > to_complex.in0;
