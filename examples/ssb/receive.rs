@@ -30,6 +30,10 @@ struct Args {
     /// explanation in http://www.csun.edu/~skatz/katzpage/sdr_project/sdr/grc_tutorial4.pdf
     #[clap(short, long, default_value_t = 51_500)]
     center_freq: i32,
+
+    /// file level adjustement
+    #[clap(long, default_value_t = 0.0001)]
+    file_level: f32,
 }
 
 fn main() -> Result<()> {
@@ -57,7 +61,7 @@ fn main() -> Result<()> {
     let mut src = FileSource::<Complex32>::new(&file_name, true);
     src.set_instance_name(format!("File {file_name}"));
 
-    const FILE_LEVEL_ADJUSTMENT: f32 = 0.0001;
+    let file_level_adjustment: f32 = args.file_level;
     let mut osc = Complex32::new(1.0, 0.0);
     let shift = Complex32::from_polar(
         1.0,
@@ -65,7 +69,7 @@ fn main() -> Result<()> {
     );
     let mut freq_xlating = Apply::new(move |v: &Complex32| {
         osc *= shift;
-        v * osc * FILE_LEVEL_ADJUSTMENT
+        v * osc * file_level_adjustment
     });
     freq_xlating.set_instance_name(format!("freq_xlating {center_freq}"));
 

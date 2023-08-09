@@ -14,7 +14,7 @@ use futuresdr::macros::connect;
 use futuresdr::runtime::Flowgraph;
 use futuresdr::runtime::Runtime;
 use hound::{SampleFormat, WavSpec};
-use num::Complex;
+use futuresdr::num_complex::Complex32;
 use std::f32::consts::TAU;
 use std::path::Path;
 
@@ -81,7 +81,7 @@ fn main() -> Result<()> {
 
     // Using a bandpass instead, can help to tame low frequencies bleeding
     // ouside of the chosen bandwidth.
-    let taps = firdes::kaiser::lowpass(cli.audio_bandwidth / audio_rate, 350.0 / audio_rate, 0.05);
+    let taps = firdes::kaiser::lowpass(cli.audio_bandwidth as f64 / audio_rate, 350.0 / audio_rate, 0.05);
     let lowpass = FirBuilder::new::<f32, f32, _, _>(taps);
 
     let split = Split::new(move |v: &f32| (*v, *v));
@@ -96,26 +96,26 @@ fn main() -> Result<()> {
 
     let mode = cli.mode.clone();
     let to_complex = Combine::new(move |i: &f32, q: &f32| match mode {
-        Mode::LSB => Complex::new(*i, *q * -1.0),
-        Mode::USB => Complex::new(*i, *q),
+        Mode::LSB => Complex32::new(*i, *q * -1.0),
+        Mode::USB => Complex32::new(*i, *q),
     });
 
-    let resampler = FirBuilder::new_resampling::<Complex<f32>, Complex<f32>>(file_rate as usize, audio_rate as usize);
+    let resampler = FirBuilder::new_resampling::<Complex32, Complex32>(file_rate as usize, audio_rate as usize);
 
-    let mut osc = Complex::new(1.0, 0.0);
-    let shift = Complex::from_polar(1.0, TAU * cli.frequency / file_rate as f32);
-    let mixer = Apply::new(move |v: &Complex<f32>| {
+    let mut osc = Complex32::new(1.0, 0.0);
+    let shift = Complex32::from_polar(1.0, TAU * cli.frequency / file_rate as f32);
+    let mixer = Apply::new(move |v: &Complex32| {
         osc *= shift;
         v * osc
     });
 
-    let to_i16_iq = ApplyNM::<_, _, _, 1, 2>::new(move |i: &[Complex<f32>], o: &mut [i16]| {
+    let to_i16_iq = ApplyNM::<_, _, _, 1, 2>::new(move |i: &[Complex32], o: &mut [i16]| {
         o[0] = (i[0].re * 0.9 * i16::MAX as f32) as i16;
         o[1] = (i[0].im * 0.9 * i16::MAX as f32) as i16;
     });
 
     let sink = WavSink::<i16>::new(
-        Path::new(cli.output.as_str()),
+        Path::new(&format!("{}.wav", cli.output.as_str())),
         WavSpec {
             channels: 2,
             sample_rate: file_rate,
@@ -125,7 +125,7 @@ fn main() -> Result<()> {
     );
 
     // TODO Make this work with `ssb-receiver`.
-    let dat = FileSink::<Complex<f32>>::new(format!("{}.dat", cli.output));
+    let dat = FileSink::<Complex32>::new(format!("{}.c32", cli.output));
     
     connect!(fg,
         source > lowpass > split;
